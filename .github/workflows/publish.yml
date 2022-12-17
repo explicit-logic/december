@@ -1,0 +1,40 @@
+name: Publish CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+    tags-ignore:
+      - '**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          cache: npm
+          node-version: 18
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@maglifter'
+      - run: npm ci
+      - run: bash ${GITHUB_WORKSPACE}/build.sh
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+      - run: npm version patch --force
+      - run: |
+          git push
+          git push --tags
+      - run: |
+          cp package.json ./dist
+          cp $NPM_CONFIG_USERCONFIG ./dist
+      - run: cd dist && npm publish --access restricted
+
